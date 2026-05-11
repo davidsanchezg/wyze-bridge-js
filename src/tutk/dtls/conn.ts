@@ -388,7 +388,14 @@ export class DTLSConn extends EventEmitter {
     const b = Buffer.alloc(16 + bodySize);
     b[0] = 0x04; b[1] = 0x02; b[2] = 0x1a; b[3] = 0x0b;
     b.writeUInt16LE(bodySize, 4);
-    b.writeUInt16LE(this.seq, 6);
+    // ADR-023 followup 2026-05-11: mask seq to 16 bits to prevent
+    // RangeError after ~65535 packets per camera (UInt16 overflow).
+    // The PRE-bundled npm-published artifact (built from an older
+    // checkpoint where this field was named `txSeq`) shipped without
+    // this mask; the live patch lives at
+    // ~/.scrypted/volume/plugins/@apocaliss92/scrypted-wyze-native/zip/unzipped/main.nodejs.js
+    // See ~/Developer/homelab-scrypted/audit/log-spam-2026-05-10.md.
+    b.writeUInt16LE(this.seq & 0xFFFF, 6);
     this.seq++;
     b.writeUInt16LE(CMD_DATA_TX, 8);
     b.writeUInt16LE(0x0021, 10);
